@@ -27,7 +27,8 @@ from __future__ import print_function
 import math
 import os
 import time
-
+import inflect
+p = inflect.engine()
 import numpy as np
 import tensorflow as tf
 from tensorflow.core.protobuf import saver_pb2
@@ -326,9 +327,27 @@ class G2PModel(object):
       phonemes: decoded phoneme sequence for input word;
     """
     # Check if all graphemes attended in vocabulary
+    
+    word = word.replace("_.", "-")
+    word = word.replace("._", "-")
+    word = word.replace(" ", "-")
+    if any(char.isdigit() for char in word):
+      word = p.number_to_words(word)
+      word = word.replace(",", "")
+      word = word.replace(" and ", "-")
+      word = word.replace(" ", "-")
+    word = word.replace(".", "")
     gr_absent = [gr for gr in word if gr not in self.gr_vocab]
+    #DB addition
+    if "-" in gr_absent and len(set(gr_absent)) == 1:
+      l = word.split("-")
+      res = []
+      for w in l:
+        res.append(self.decode_word(w))
+      return " ".join(res).strip()
     if gr_absent:
       print("Symbols '%s' are not in vocabulary" % "','".join(gr_absent).encode('utf-8'))
+      print (word)
       return ""
 
     # Get token-ids for the input word.
@@ -401,7 +420,7 @@ class G2PModel(object):
     print("Accuracy: %.3f" % float(1-(errors/len(test_dic))))
 
 
-  def decode(self, decode_lines, output_file=None):
+  def decode(self, decode_lines, cache, output_file=None):
     """Decode words from file.
 
     Returns:
@@ -424,10 +443,14 @@ class G2PModel(object):
     else:
       for word in decode_lines:
         word = word.strip()
-        phonemes = self.decode_word(word)
-        print(word + ' ' + phonemes)
+        if word in cache:
+            phonemes = cache[word]
+        else:
+            phonemes = self.decode_word(word)
+            cache[word] = phonemes
+        #print(word + ' ' + phonemes)
         phoneme_lines.append(phonemes)
-    return phoneme_lines
+    return phoneme_lines, cache
 
 
 class TrainingParams(object):
