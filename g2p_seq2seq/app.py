@@ -61,6 +61,12 @@ tf.app.flags.DEFINE_string("optimizer", "sgd", "Optimizer type: sgd, adam, rms-p
 
 FLAGS = tf.app.flags.FLAGS
 
+def getModel(model):
+    g2p_model = G2PModel(model)
+    g2p_model.load_decode_model()
+    return g2p_model
+
+
 def main(_=[]):
   """Main function.
   """
